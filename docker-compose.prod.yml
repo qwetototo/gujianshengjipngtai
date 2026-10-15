@@ -1,0 +1,66 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ota_console}
+      MYSQL_USER: ${MYSQL_USER:-ota_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
+    volumes: [mysql_data:/var/lib/mysql]
+    networks: [ota_internal]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    logging: &default_logging
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  backend:
+    build: ./backend
+    image: ota-console-backend:1.0.0
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      OTA_DATABASE_URL: ${OTA_DATABASE_URL:-jdbc:mysql://mysql:3306/ota_console?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=false&sslMode=REQUIRED}
+      OTA_DATABASE_USERNAME: ${OTA_DATABASE_USERNAME:-ota_app}
+      OTA_DATABASE_PASSWORD: ${OTA_DATABASE_PASSWORD:?set OTA_DATABASE_PASSWORD in .env}
+      OTA_ADMIN_USERNAME: ${OTA_ADMIN_USERNAME:-admin}
+      OTA_ADMIN_PASSWORD: ${OTA_ADMIN_PASSWORD:?set OTA_ADMIN_PASSWORD in .env}
+      OTA_STORAGE_DIR: /var/lib/ota/firmware
+      OTA_OBJECT_STORAGE_BACKEND: filesystem
+      OTA_STORAGE_WARNING_FREE_PERCENT: ${OTA_STORAGE_WARNING_FREE_PERCENT:-15}
+      OTA_STORAGE_WARNING_FREE_BYTES: ${OTA_STORAGE_WARNING_FREE_BYTES:-10737418240}
+      OTA_STORAGE_UPLOAD_RESERVE_BYTES: ${OTA_STORAGE_UPLOAD_RESERVE_BYTES:-2147483648}
+      OTA_MAX_FILE_SIZE: ${OTA_MAX_FILE_SIZE:-200MB}
+      OTA_MAX_REQUEST_SIZE: ${OTA_MAX_REQUEST_SIZE:-220MB}
+    volumes: ["${OTA_STORAGE_PATH:-/srv/ota/firmware}:/var/lib/ota/firmware"]
+    depends_on:
+      mysql: { condition: service_healthy }
+    networks: [ota_internal]
+    logging: *default_logging
+
+  nginx:
+    image: nginx:1.30.5-alpine
+    restart: unless-stopped
+    ports: ["${HTTP_PORT:-18082}:80"]
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html:ro
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on: [backend]
+    networks: [ota_internal, ota_frontend]
+    logging: *default_logging
+
+networks:
+  ota_internal:
+    driver: bridge
+    internal: true
+  ota_frontend:
+    driver: bridge
+
+volumes:
+  mysql_data:

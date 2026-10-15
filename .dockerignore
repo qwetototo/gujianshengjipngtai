@@ -1,0 +1,13 @@
+.git
+.idea
+.vscode
+.m2repo
+.npm-cache
+**/node_modules
+**/target
+frontend/dist
+*.log
+.env
+.env.*
+!.env.docker.example
+!.env.prod.example

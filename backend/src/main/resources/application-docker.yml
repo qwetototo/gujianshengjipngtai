@@ -1,0 +1,17 @@
+server:
+  forward-headers-strategy: framework
+
+spring:
+  servlet:
+    multipart:
+      location: /tmp/ota-upload
+  datasource:
+    hikari:
+      maximum-pool-size: ${OTA_DATABASE_POOL_SIZE:10}
+
+ota:
+  storage-dir: ${OTA_STORAGE_DIR:/var/lib/ota/firmware}
+  object-storage:
+    backend: ${OTA_OBJECT_STORAGE_BACKEND:filesystem}
+  cors:
+    allowed-origins: ${OTA_CORS_ALLOWED_ORIGINS:}

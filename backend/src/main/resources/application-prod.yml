@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: ${OTA_DATABASE_URL:jdbc:mysql://mysql:3306/ota_console?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=false&sslMode=REQUIRED}
+    username: ${OTA_DATABASE_USERNAME:ota_app}
+    password: ${OTA_DATABASE_PASSWORD:}
+
+ota:
+  storage-dir: ${OTA_STORAGE_DIR:/srv/ota/firmware}
+  auth:
+    username: ${OTA_ADMIN_USERNAME:admin}
+    password: ${OTA_ADMIN_PASSWORD:}
+    require-strong-password: true
+  cors:
+    allowed-origins: ${OTA_CORS_ALLOWED_ORIGINS:}
+
+server:
+  shutdown: graceful
+  tomcat:
+    connection-timeout: 20s
+    max-swallow-size: ${OTA_MAX_REQUEST_SIZE:220MB}
+
+spring.lifecycle:
+  timeout-per-shutdown-phase: 30s

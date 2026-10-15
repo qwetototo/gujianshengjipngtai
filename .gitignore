@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.prod.example
+!.env.docker.example
+**/node_modules/
+**/target/
+**/.idea/
+**/.vscode/
+.tooling/
+.m2repo/
+temurin17.zip
+frontend/dist/
+*.pack
+*.log
