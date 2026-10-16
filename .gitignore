@@ -9,6 +9,5 @@
 .tooling/
 .m2repo/
 temurin17.zip
-frontend/dist/
 *.pack
 *.log
