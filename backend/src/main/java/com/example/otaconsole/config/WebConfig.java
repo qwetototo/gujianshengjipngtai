@@ -34,7 +34,6 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(authInterceptor)
-                .addPathPatterns("/api/admin/**", "/api/logs", "/api/system/**")
-                .excludePathPatterns("/api/firmware/download/**");
+                .addPathPatterns("/api/admin/**", "/api/logs", "/api/system/**");
     }
 }

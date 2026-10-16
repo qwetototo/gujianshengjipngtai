@@ -26,6 +26,8 @@ spring:
     property-naming-strategy: SNAKE_CASE
 
 ota:
+  firmware:
+    history-retain-count: ${OTA_FIRMWARE_HISTORY_RETAIN_COUNT:5}
   storage-dir: ${OTA_STORAGE_DIR:E:/固件暂存}
   object-storage:
     backend: ${OTA_OBJECT_STORAGE_BACKEND:filesystem}

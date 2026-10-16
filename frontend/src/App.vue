@@ -17,14 +17,20 @@
     <main class="detail-container">
       <article class="detail-card">
         <div class="detail-title">
-          <span>{{ detail.device_model }}</span>
+          <span>{{ detail.product }}</span>
           <span class="ver">{{ detail.version }}</span>
         </div>
         <p class="detail-sub">固件详情信息</p>
         <dl>
-          <dt>设备类型</dt><dd>{{ detail.device_model }}</dd>
-          <dt>版本</dt><dd class="mono">{{ detail.version }}</dd>
+          <dt>product</dt><dd class="mono">{{ detail.product }}</dd>
+          <dt>hardware_id</dt><dd class="mono">{{ detail.hardware_id || '-' }}</dd>
+          <dt>partition_id</dt><dd class="mono">{{ detail.partition_id || '-' }}</dd>
+          <dt>sdk_compat</dt><dd class="mono">{{ detail.sdk_compat || '-' }}</dd>
+          <dt>target_build</dt><dd class="mono">{{ detail.target_build || '-' }}</dd>
+          <dt>version_code</dt><dd class="mono">{{ detail.version_code ?? '-' }}</dd>
+          <dt>work_size</dt><dd class="mono">{{ detail.work_size ?? '-' }}</dd>
           <dt>版本简述</dt><dd>{{ detail.description }}</dd>
+          <dt>release_notes</dt><dd>{{ detail.release_notes || '-' }}</dd>
           <dt>文件大小</dt><dd>{{ formatSize(detail.file_size) }}（{{ detail.file_size }} 字节）</dd>
           <dt>MD5</dt><dd class="mono">{{ detail.md5 }}</dd>
           <dt>上传时间</dt><dd>{{ formatTime(detail.upload_time) }}</dd>
@@ -67,15 +73,22 @@
         <h2 class="page-title">上传固件</h2>
         <form class="upload-card" @submit.prevent="upload">
           <div class="form-grid">
-            <label>设备类型 <input v-model.trim="form.device_model" required placeholder="如 EC200UCN_AA"></label>
-            <label>上传版本 <input v-model.trim="form.version" required placeholder="如 1.0.0"></label>
+            <label>product <input v-model.trim="form.product" required placeholder="如 df_motion"></label>
+            <label>hardware_id <input v-model.trim="form.hardware_id" required placeholder="如 EC200UCN_AA"></label>
+            <label>partition_id <input v-model.trim="form.partition_id" required placeholder="如 8910_8m_novolte"></label>
+            <label>sdk_compat <input v-model.trim="form.sdk_compat" required placeholder="兼容 SDK 标识"></label>
+            <label>target_build <input v-model.trim="form.target_build" required placeholder="本次构建唯一标识"></label>
+            <label>version <input v-model.trim="form.version" required placeholder="如 1.1.2"></label>
+            <label>version_code <input v-model.number="form.version_code" required type="number" min="1" max="4294967295"></label>
+            <label>work_size <input v-model.number="form.work_size" required type="number" min="0" max="4294967295"></label>
             <label>上传人 <input v-model.trim="form.uploader" required placeholder="如 zhangsan"></label>
             <label>固件文件 <input required type="file" accept=".pack" @change="form.file = $event.target.files[0]"></label>
             <label class="full">版本简述 <textarea v-model.trim="form.description" placeholder="如：修复定位漂移问题"></textarea></label>
+            <label class="full">release_notes <textarea v-model.trim="form.release_notes" maxlength="1024" placeholder="可选，供设备端版本清单使用"></textarea></label>
           </div>
           <div class="form-actions">
             <button class="btn-primary" :disabled="busy">{{ busy ? '上传中...' : '上传' }}</button>
-          <span>仅允许 .pack 文件；同一设备类型上传会覆盖旧版本并删除旧文件；版本号默认从版本中自动提取（如 1.0.0 → 1）；大小和 MD5 由服务器计算。</span>
+          <span>仅允许 .pack 文件；固定清单字段由系统填写，文件大小、MD5 和 SHA-256 由服务器计算。</span>
           </div>
         </form>
       </section>
@@ -86,29 +99,30 @@
           <div class="list-header">
             <h3>所有版本</h3>
             <div class="list-tools">
-              <select v-model="selectedDeviceType" aria-label="按设备类型筛选">
-                <option value="">全部设备类型</option>
-                <option v-for="deviceType in deviceTypes" :key="deviceType" :value="deviceType">{{ deviceType }}</option>
+              <select v-model="selectedProduct" aria-label="按 product 筛选">
+                <option value="">全部产品</option>
+                <option v-for="product in products" :key="product" :value="product">{{ product }}</option>
               </select>
               <span>{{ filteredFirmware.length }} 个版本</span>
             </div>
           </div>
           <table v-if="filteredFirmware.length">
-            <thead><tr><th>设备类型</th><th>版本</th><th>版本简述</th><th>大小</th><th>上传时间</th><th>上传人</th><th>下载地址</th><th>操作</th></tr></thead>
+            <thead><tr><th>版本状态</th><th>产品</th><th>版本</th><th>版本简述</th><th>大小</th><th>上传时间</th><th>上传人</th><th>下载地址</th><th>操作</th></tr></thead>
             <tbody>
               <tr v-for="item in filteredFirmware" :key="item.id">
-                <td><button class="tag-link" @click="detail = item">{{ item.device_model }}</button></td>
-                <td><span class="ver-flow"><strong>{{ item.version }}</strong><small v-if="item.previous_version">上一版 {{ item.previous_version }}</small></span></td>
+                <td><span class="version-state" :class="item.latest ? 'latest' : 'historical'">{{ item.latest ? '最新版本' : '历史版本' }}</span></td>
+                <td><button class="tag-link" @click="detail = item">{{ item.product }}</button></td>
+                <td><strong>{{ item.version }}</strong></td>
                 <td><button class="desc" :title="item.description" @click="detail = item">{{ item.description }}</button></td>
                 <td class="muted">{{ formatSize(item.file_size) }}</td>
                 <td class="muted">{{ formatTime(item.upload_time) }}</td>
                 <td>{{ item.uploader }}</td>
                 <td class="url-cell"><a :href="downloadUrl(item)" target="_blank">{{ downloadUrl(item) }}</a><button @click="copy(downloadUrl(item))">复制</button></td>
-                <td><button v-if="item.previous_version" class="btn-del" @click="rollbackFirmware(item)"><RotateCcw :size="14" />回滚</button> <button class="btn-del" @click="remove(item)"><Trash2 :size="14" />删除</button></td>
+                <td><button class="btn-del" @click="remove(item)"><Trash2 :size="14" />删除</button></td>
               </tr>
             </tbody>
           </table>
-          <div v-else class="empty">{{ firmware.length ? '该设备类型暂无固件' : '暂无固件，请先上传' }}</div>
+          <div v-else class="empty">{{ firmware.length ? '该产品暂无固件' : '暂无固件，请先上传' }}</div>
         </div>
       </section>
 
@@ -117,17 +131,17 @@
         <div class="list-card">
           <div class="filters">
             <select v-model="logAction"><option value="">全部</option><option value="upload">上传</option><option value="download">下载</option><option value="delete">删除</option><option value="storage_warning">磁盘预警</option><option value="storage_recovered">空间恢复</option></select>
-            <input v-model.trim="logKeyword" placeholder="设备类型 / 版本 / 操作人">
+            <input v-model.trim="logKeyword" placeholder="产品 / 版本 / 操作人">
             <button @click="loadAll"><RefreshCw :size="14" />刷新</button>
             <span>{{ filteredLogs.length }} 条记录</span>
           </div>
           <table v-if="filteredLogs.length">
-            <thead><tr><th>时间</th><th>操作类型</th><th>设备类型</th><th>版本</th><th>操作人</th><th>详情</th></tr></thead>
+            <thead><tr><th>时间</th><th>操作类型</th><th>产品</th><th>版本</th><th>操作人</th><th>详情</th></tr></thead>
             <tbody>
               <tr v-for="log in filteredLogs" :key="log.id">
                 <td class="muted">{{ formatTime(log.occurred_at) }}</td>
                 <td><span class="badge" :class="log.action">{{ actionLabel[log.action] || log.action }}</span></td>
-                <td>{{ log.device_model }}</td><td>{{ log.version }}</td><td>{{ log.operator }}</td><td>{{ log.detail }}</td>
+                <td>{{ log.product }}</td><td>{{ log.version }}</td><td>{{ log.operator }}</td><td>{{ log.detail }}</td>
               </tr>
             </tbody>
           </table>
@@ -142,7 +156,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { RotateCcw, Trash2 } from '@lucide/vue'
+import { Trash2 } from '@lucide/vue'
 
 const API = import.meta.env.VITE_API_BASE_URL || ''
 const authToken = ref(sessionStorage.getItem('otaToken') || '')
@@ -154,15 +168,15 @@ const page = ref('upload')
 const detail = ref(null)
 const firmware = ref([])
 const logs = ref([])
-const selectedDeviceType = ref('')
+const selectedProduct = ref('')
 const busy = ref(false)
 const toastText = ref('')
 const storageStatus = ref(null)
 let storageTimer
 const logAction = ref('')
 const logKeyword = ref('')
-const actionLabel = { upload: '上传', download: '下载', delete: '删除', rollback: '回滚', storage_warning: '磁盘预警', storage_recovered: '空间恢复' }
-const form = reactive({ device_model: '', version: '', uploader: '', description: '', file: null })
+const actionLabel = { upload: '上传', download: '下载', delete: '删除', storage_warning: '磁盘预警', storage_recovered: '空间恢复' }
+const form = reactive({ product: '', hardware_id: '', partition_id: '', sdk_compat: '', target_build: '', version: '', version_code: null, work_size: null, release_notes: '', uploader: '', description: '', file: null })
 
 onMounted(() => {
   if (loggedIn.value) loadAll().catch(() => clearSession())
@@ -178,18 +192,18 @@ const filteredLogs = computed(() => {
   return logs.value.filter(log => {
     if (logAction.value && log.action !== logAction.value) return false
     if (!keyword) return true
-    return `${log.device_model} ${log.version} ${log.operator} ${log.detail}`.toLowerCase().includes(keyword)
+    return `${log.product} ${log.version} ${log.operator} ${log.detail}`.toLowerCase().includes(keyword)
   })
 })
 
-const deviceTypes = computed(() => [...new Set(firmware.value.map(item => item.device_model).filter(Boolean))]
+const products = computed(() => [...new Set(firmware.value.map(item => item.product).filter(Boolean))]
   .sort((left, right) => left.localeCompare(right, 'zh-CN')))
-const filteredFirmware = computed(() => selectedDeviceType.value
-  ? firmware.value.filter(item => item.device_model === selectedDeviceType.value)
+const filteredFirmware = computed(() => selectedProduct.value
+  ? firmware.value.filter(item => item.product === selectedProduct.value)
   : firmware.value)
-watch(deviceTypes, types => {
-  if (selectedDeviceType.value && !types.includes(selectedDeviceType.value)) {
-    selectedDeviceType.value = ''
+watch(products, types => {
+  if (selectedProduct.value && !types.includes(selectedProduct.value)) {
+    selectedProduct.value = ''
   }
 })
 
@@ -261,17 +275,17 @@ async function refreshMonitoring() {
 
 async function upload() {
   if (!form.file) return showToast('请选择固件文件')
-  const deviceKey = form.device_model.trim().toLowerCase()
-  const existing = firmware.value.find(item => (item.device_model || '').toLowerCase() === deviceKey)
-  if (existing && !confirm(`设备 ${existing.device_model} 当前为 ${existing.version}，继续上传会将其保存为可回滚的上一版，确定吗？`)) return
+  const productKey = form.product.trim().toLowerCase()
+  const existing = firmware.value.find(item => (item.product || '').toLowerCase() === productKey && item.latest)
+  if (existing && !confirm(`产品 ${existing.product} 当前最新版本为 ${existing.version}，继续发布会将其保留为历史版本，确定吗？`)) return
   busy.value = true
   const body = new FormData()
-  for (const key of ['device_model', 'version', 'description', 'uploader']) body.append(key, form[key])
+  for (const key of ['product', 'hardware_id', 'partition_id', 'sdk_compat', 'target_build', 'version', 'version_code', 'work_size', 'release_notes', 'description', 'uploader']) body.append(key, form[key] ?? '')
   body.append('file', form.file)
   try {
     const res = await apiFetch('/api/admin/firmware/upload', { method: 'POST', body })
     if (!res.ok) return showToast((await res.json()).message || '上传失败')
-    Object.assign(form, { device_model: '', version: '', description: '', file: null, uploader: currentUser.value })
+    Object.assign(form, { product: '', hardware_id: '', partition_id: '', sdk_compat: '', target_build: '', version: '', version_code: null, work_size: null, release_notes: '', description: '', file: null, uploader: currentUser.value })
     await loadAll()
     page.value = 'list'
     showToast('上传成功')
@@ -283,7 +297,7 @@ async function upload() {
 }
 
 async function remove(item) {
-  if (!confirm(`确定删除 ${item.device_model} ${item.version} 吗？`)) return
+  if (!confirm(`确定删除 ${item.product} ${item.version} 吗？`)) return
   try {
     const res = await apiFetch(`/api/admin/firmware/${item.id}?operator=${encodeURIComponent(currentUser.value)}`, { method: 'DELETE' })
     if (!res.ok) throw new Error('删除失败')
@@ -294,24 +308,12 @@ async function remove(item) {
   }
 }
 
-async function rollbackFirmware(item) {
-  if (!confirm(`确定将 ${item.device_model} 从 ${item.version} 回滚到 ${item.previous_version} 吗？回滚后当前版会成为新的上一版。`)) return
-  try {
-    const res = await apiFetch(`/api/admin/firmware/${item.id}/rollback?operator=${encodeURIComponent(currentUser.value)}`, { method: 'POST' })
-    if (!res.ok) throw new Error((await res.json()).message || '回滚失败')
-    await loadAll()
-    showToast('已回滚到上一版')
-  } catch (error) {
-    showToast(error.message || '回滚失败')
-  }
-}
-
 function downloadUrl(item) {
   return `/api/firmware/download/${item.id}`
 }
 
 function versionUrl(item) {
-  return `/api/firmware/version?device_model=${encodeURIComponent(item.device_model)}&current_version=`
+  return `/api/firmware/version?product=${encodeURIComponent(item.product)}`
 }
 
 function formatSize(bytes) {

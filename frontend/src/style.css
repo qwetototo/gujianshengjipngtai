@@ -49,6 +49,9 @@ tr:hover td { background: #fafbfc; }
 .ver-flow { display: inline-flex; gap: 6px; align-items: center; font-family: Consolas, monospace; }
 .ver-flow b { color: #646a73; }
 .ver-flow strong { color: #3370ff; }
+.version-state { display: inline-block; min-width: 68px; text-align: center; border-radius: 4px; padding: 3px 7px; font-size: 12px; font-weight: 600; }
+.version-state.latest { color: #176b3a; background: #e8f7ee; }
+.version-state.historical { color: #586174; background: #eef0f3; }
 .desc { border: 0; background: transparent; color: #646a73; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .muted { color: #8f959e; white-space: nowrap; }
 .url-cell { display: flex; align-items: center; gap: 8px; max-width: 260px; }
