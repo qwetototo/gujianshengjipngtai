@@ -29,7 +29,6 @@ services:
       OTA_DATABASE_URL: ${OTA_DATABASE_URL:-jdbc:mysql://mysql:3306/ota_console?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=false&sslMode=REQUIRED}
       OTA_DATABASE_USERNAME: ${OTA_DATABASE_USERNAME:-ota_app}
       OTA_DATABASE_PASSWORD: ${OTA_DATABASE_PASSWORD:?set OTA_DATABASE_PASSWORD in .env}
-      OTA_ADMIN_USERNAME: ${OTA_ADMIN_USERNAME:-admin}
       OTA_ADMIN_PASSWORD: ${OTA_ADMIN_PASSWORD:?set OTA_ADMIN_PASSWORD in .env}
       OTA_STORAGE_DIR: /var/lib/ota/firmware
       OTA_FIRMWARE_HISTORY_RETAIN_COUNT: ${OTA_FIRMWARE_HISTORY_RETAIN_COUNT:-5}

@@ -4,19 +4,20 @@ Java 17 + Spring Boot + Vue 3 的 HTTP OTA 固件发布控制台。
 
 ## 数据持久化
 
-- 固件元数据和操作日志保存在 MySQL；`backend/src/main/resources/db/migration/V1__init.sql` 是可直接查看的表结构，首次启动由 Flyway 自动建表。
+- 固件元数据、操作日志和管理员账号保存在 MySQL；`backend/src/main/resources/db/migration/` 下的 Flyway 脚本会按顺序创建和升级表结构。
+- 管理员表只允许一个 `admin` 账号，密码以 PBKDF2 哈希存储。首次启动时使用 `OTA_ADMIN_PASSWORD` 初始化；已有账号时不会用环境变量覆盖数据库密码。
 - `.pack` 文件保存在 `OTA_STORAGE_DIR` 指向的文件系统目录，按产品（`product`）分目录；数据库只保存相对路径、大小和摘要。
 - 同一产品保留最新版本和默认 5 个历史版本：重复上传会把上一版转为历史版本并发布新版本。固件记录 id 为自增整数。
 - 删除固件会同时删除数据库记录和文件，并保留删除日志。备份时必须同时备份 MySQL 和固件目录。
 - 本地默认连接 `127.0.0.1:3306/ceshi`，用户名 `root`。运行本地脚本时会安全提示输入数据库密码，密码不会写入项目文件。
-- 表结构变更后本地已有旧表需手动处理：删除 `firmware`、`operation_log`（及 `flyway_schema_history`）后重启，否则 Flyway 会因 V1 校验和不一致而失败。
+- 已有数据库通过新增 Flyway 迁移升级，不要删除 `firmware`、`operation_log` 或 `flyway_schema_history`。
 
 ## 本地测试
 
 需先启动本地 MySQL，并准备 Java 17 或更高版本的 JDK、Node.js 20.19+ 或 22.12+。Windows 可通过 `JAVA_HOME` 指向 JDK 安装目录。
 
 1. 启动本地 MySQL 服务。
-2. 在项目根目录运行 `run-local.ps1`，按提示输入本地 MySQL 密码。默认使用 `E:\固件暂存`；测试管理员为 `admin / 123456`。
+2. 在项目根目录运行 `run-local.ps1`，按提示输入本地 MySQL 密码。默认使用 `E:\固件暂存`；首次初始化的测试管理员为 `admin / 123456`。
 3. 新开终端运行：
 
 ```powershell
@@ -62,6 +63,16 @@ MySQL 只加入 Docker 内部网络，不映射公网端口；公网仅暴露 Ng
 ### 本地 Docker 测试
 
 复制 `.env.docker.example` 为 `.env` 后运行 `docker compose up -d --build`，访问 `http://localhost:18080`，测试用户为 `admin` / `123456`。本地使用独立 MySQL 数据卷，固件文件绑定到 `.env` 的 `OTA_STORAGE_PATH`（默认 `E:/固件暂存`），可直接在资源管理器查看。不要将测试密码用于生产；`docker compose down -v` 会删除数据库数据卷，但不会删除绑定目录里的固件文件。
+
+### 忘记管理员密码
+
+停止后端后，将运行环境中的 `OTA_ADMIN_PASSWORD` 改为新密码，再连接正在使用的 MySQL 数据库并执行：
+
+```sql
+DELETE FROM admin_user WHERE username = 'admin';
+```
+
+重新启动后端时，系统会用新密码生成 PBKDF2 哈希并重建唯一的 `admin` 记录。Docker 部署需更新 `.env`；IntelliJ 本地运行则修改 Run Configuration 的环境变量。不要删除整张管理员表或其他业务表。
 
 ## 主要接口
 

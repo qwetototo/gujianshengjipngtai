@@ -7,7 +7,6 @@ spring:
 ota:
   storage-dir: ${OTA_STORAGE_DIR:/srv/ota/firmware}
   auth:
-    username: ${OTA_ADMIN_USERNAME:admin}
     password: ${OTA_ADMIN_PASSWORD:}
     require-strong-password: true
   cors:

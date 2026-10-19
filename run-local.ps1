@@ -20,11 +20,15 @@ if ($majorVersion -lt 17) {
 $securePassword = $null
 $passwordPointer = [IntPtr]::Zero
 $previousPassword = $env:OTA_DATABASE_PASSWORD
+$previousAdminPassword = $env:OTA_ADMIN_PASSWORD
 try {
     if ([string]::IsNullOrEmpty($env:OTA_DATABASE_PASSWORD)) {
         $securePassword = Read-Host '请输入本地 MySQL 密码' -AsSecureString
         $passwordPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
         $env:OTA_DATABASE_PASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($passwordPointer)
+    }
+    if ([string]::IsNullOrWhiteSpace($env:OTA_ADMIN_PASSWORD)) {
+        $env:OTA_ADMIN_PASSWORD = '123456'
     }
     $env:SPRING_PROFILES_ACTIVE = 'local'
     Push-Location (Join-Path $PSScriptRoot 'backend')
@@ -40,4 +44,5 @@ try {
     }
     if ($null -ne $securePassword) { $securePassword.Dispose() }
     $env:OTA_DATABASE_PASSWORD = $previousPassword
+    $env:OTA_ADMIN_PASSWORD = $previousAdminPassword
 }

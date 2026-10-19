@@ -1,12 +1,66 @@
 <template>
-  <section v-if="!loggedIn" class="login-page">
-    <form class="login-box" @submit.prevent="login">
-      <h1>固件管理后台</h1>
-      <input v-model.trim="loginUser" placeholder="管理员账号" autocomplete="username">
-      <input v-model="loginPass" type="password" placeholder="管理员密码" autocomplete="current-password">
-      <button type="submit" :disabled="busy">{{ busy ? '登录中...' : '登录' }}</button>
-      <p>请使用已配置的管理员账号登录</p>
-    </form>
+  <section v-if="!loggedIn" class="login-page" :class="{ 'login-dark': darkMode }">
+    <button class="login-theme" type="button" @click="toggleTheme">
+      <Sun v-if="darkMode" :size="16" />
+      <Moon v-else :size="16" />
+      {{ darkMode ? '浅色' : '深色' }}
+    </button>
+    <div class="login-shell" :class="{ 'login-dark': darkMode }">
+      <section class="login-brand">
+        <div class="brand-mark"><Cpu :size="26" :stroke-width="1.8" /></div>
+        <div class="brand-copy">
+          <p class="brand-kicker">DEVICE FIRMWARE OPERATIONS</p>
+          <h1><span>OTA</span> 固件管理平台</h1>
+          <p class="brand-description">固件发布、版本留存与设备升级信息，一处管理。</p>
+        </div>
+        <div class="brand-highlights">
+          <div><strong>版本可追溯</strong><span>最新版本与历史版本清晰归档</span></div>
+          <div><strong>升级清单</strong><span>按规范生成设备端版本信息</span></div>
+          <div><strong>文件有校验</strong><span>自动计算摘要并提供下载</span></div>
+        </div>
+      </section>
+
+      <form class="login-form" @submit.prevent="login">
+        <div class="login-heading">
+          <span class="login-eyebrow">ADMINISTRATOR</span>
+          <h2>登录控制台</h2>
+          <p>使用管理员账号继续</p>
+        </div>
+        <label for="admin-account">账号</label>
+        <input id="admin-account" v-model.trim="loginUser" required autocomplete="username" placeholder="admin">
+        <label for="admin-password">密码</label>
+        <div class="password-field">
+          <input id="admin-password" v-model="loginPass" required :type="showPassword ? 'text' : 'password'" autocomplete="current-password" placeholder="请输入管理员密码">
+          <button class="password-toggle" type="button" :aria-label="showPassword ? '隐藏密码' : '显示密码'" @click="showPassword = !showPassword">
+            <EyeOff v-if="showPassword" :size="17" />
+            <Eye v-else :size="17" />
+          </button>
+        </div>
+        <div class="login-options">
+          <label class="remember-option"><input v-model="rememberMe" type="checkbox">保持登录</label>
+          <button class="text-button" type="button" @click="showForgotPassword = true">忘记密码？</button>
+        </div>
+        <button class="login-submit" type="submit" :disabled="busy">
+          {{ busy ? '正在登录…' : '登录控制台' }}
+        </button>
+        <p class="login-footnote">此平台仅设置一个管理员账号</p>
+      </form>
+    </div>
+
+    <div v-if="showForgotPassword" class="modal-backdrop" @click.self="showForgotPassword = false">
+      <section class="reset-dialog" role="dialog" aria-modal="true" aria-labelledby="reset-title">
+        <button class="dialog-close" type="button" aria-label="关闭" @click="showForgotPassword = false"><X :size="18" /></button>
+        <div class="reset-icon"><KeyRound :size="20" /></div>
+        <h2 id="reset-title">重置管理员密码</h2>
+        <p>密码不会以明文保存在数据库。忘记密码时，请按以下步骤在服务器本机重置：</p>
+        <ol>
+          <li>停止后端服务，并将运行环境中的 <code>OTA_ADMIN_PASSWORD</code> 改为新密码。</li>
+          <li>连接项目数据库，执行：<code>DELETE FROM admin_user WHERE username = 'admin';</code></li>
+          <li>重新启动后端，系统会用新密码生成哈希并重新创建唯一的 admin 账号。</li>
+        </ol>
+        <button class="dialog-confirm" type="button" @click="showForgotPassword = false">知道了</button>
+      </section>
+    </div>
   </section>
 
   <section v-else-if="detail" class="detail-page">
@@ -52,7 +106,7 @@
 
   <section v-else class="layout">
     <aside class="sidebar">
-      <div class="sidebar-logo">固件管理后台</div>
+      <div class="sidebar-logo">OTA 固件管理平台</div>
       <nav>
         <button :class="{ active: page === 'upload' }" @click="page = 'upload'"><ArrowUpFromLine :size="17" />上传固件</button>
         <button :class="{ active: page === 'list' }" @click="page = 'list'"><ListIcon :size="17" />固件列表</button>
@@ -73,18 +127,66 @@
         <h2 class="page-title">上传固件</h2>
         <form class="upload-card" @submit.prevent="upload">
           <div class="form-grid">
-            <label>product <input v-model.trim="form.product" required placeholder="如 df_motion"></label>
-            <label>hardware_id <input v-model.trim="form.hardware_id" required placeholder="如 EC200UCN_AA"></label>
-            <label>partition_id <input v-model.trim="form.partition_id" required placeholder="如 8910_8m_novolte"></label>
-            <label>sdk_compat <input v-model.trim="form.sdk_compat" required placeholder="兼容 SDK 标识"></label>
-            <label>target_build <input v-model.trim="form.target_build" required placeholder="本次构建唯一标识"></label>
-            <label>version <input v-model.trim="form.version" required placeholder="如 1.1.2"></label>
-            <label>version_code <input v-model.number="form.version_code" required type="number" min="1" max="4294967295"></label>
-            <label>work_size <input v-model.number="form.work_size" required type="number" min="0" max="4294967295"></label>
-            <label>上传人 <input v-model.trim="form.uploader" required placeholder="如 zhangsan"></label>
-            <label>固件文件 <input required type="file" accept=".pack" @change="form.file = $event.target.files[0]"></label>
-            <label class="full">版本简述 <textarea v-model.trim="form.description" placeholder="如：修复定位漂移问题"></textarea></label>
-            <label class="full">release_notes <textarea v-model.trim="form.release_notes" maxlength="1024" placeholder="可选，供设备端版本清单使用"></textarea></label>
+            <label>
+              <span class="field-label">产品标识 <code>product</code></span>
+              <small class="field-help">OTA 用它区分产品系列，请填写约定的英文标识，例如 df_motion。</small>
+              <input v-model.trim="form.product" required placeholder="例如 df_motion">
+            </label>
+            <label>
+              <span class="field-label">硬件型号 <code>hardware_id</code></span>
+              <small class="field-help">填写本固件适用的硬件型号，必须与设备端识别值一致。</small>
+              <input v-model.trim="form.hardware_id" required placeholder="例如 EC200UCN_AA">
+            </label>
+            <label>
+              <span class="field-label">分区方案 <code>partition_id</code></span>
+              <small class="field-help">填写打包时使用的分区配置标识，需与固件包匹配。</small>
+              <input v-model.trim="form.partition_id" required placeholder="例如 8910_8m_novolte">
+            </label>
+            <label>
+              <span class="field-label">SDK 兼容标识 <code>sdk_compat</code></span>
+              <small class="field-help">说明固件适用的模组与 SDK 组合，请按构建信息填写。</small>
+              <input v-model.trim="form.sdk_compat" required placeholder="例如 EC200UCN_AA_8915DM_novolte_8m_v1">
+            </label>
+            <label>
+              <span class="field-label">构建标识 <code>target_build</code></span>
+              <small class="field-help">标记这一次固件构建，建议直接从构建说明中复制。</small>
+              <input v-model.trim="form.target_build" required placeholder="例如 df_motion_20261014_blefull3">
+            </label>
+            <label>
+              <span class="field-label">固件版本 <code>version</code></span>
+              <small class="field-help">设备当前版本与用户可见的版本号，例如 1.1.2。</small>
+              <input v-model.trim="form.version" required placeholder="例如 1.1.2">
+            </label>
+            <label>
+              <span class="field-label">版本比较序号 <code>version_code</code></span>
+              <small class="field-help">用于设备判断是否升级；必须大于设备当前版本对应的序号。</small>
+              <input v-model.number="form.version_code" required type="number" min="1" max="4294967295" placeholder="例如 10102">
+            </label>
+            <label>
+              <span class="field-label">升级工作区大小（字节） <code>work_size</code></span>
+              <small class="field-help">从 SDK 打包报告读取；这是设备升级所需空间，不是 .pack 文件大小。</small>
+              <input v-model.number="form.work_size" required type="number" min="0" max="4294967295" placeholder="例如 65536">
+            </label>
+            <label>
+              <span class="field-label">发布人</span>
+              <small class="field-help">记录本次固件发布的负责人。</small>
+              <input v-model.trim="form.uploader" required placeholder="填写姓名或工号">
+            </label>
+            <label>
+              <span class="field-label">固件包</span>
+              <small class="field-help">选择本次发布的完整升级包，仅支持 .pack 文件。</small>
+              <input required type="file" accept=".pack" @change="form.file = $event.target.files[0]">
+            </label>
+            <label class="full">
+              <span class="field-label">版本简述</span>
+              <small class="field-help">平台中供维护人员查看的简短说明。</small>
+              <textarea v-model.trim="form.description" placeholder="例如：修复定位漂移问题"></textarea>
+            </label>
+            <label class="full">
+              <span class="field-label">设备端更新说明 <code>release_notes</code>（可选）</span>
+              <small class="field-help">写入版本清单、可供设备端读取，最多 1024 字节。</small>
+              <textarea v-model.trim="form.release_notes" maxlength="1024" placeholder="例如：优化蓝牙连接稳定性"></textarea>
+            </label>
           </div>
           <div class="form-actions">
             <button class="btn-primary" :disabled="busy">{{ busy ? '上传中...' : '上传' }}</button>
@@ -156,14 +258,18 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { Trash2 } from '@lucide/vue'
+import { Cpu, Eye, EyeOff, KeyRound, Moon, Sun, Trash2, X } from '@lucide/vue'
 
 const API = import.meta.env.VITE_API_BASE_URL || ''
-const authToken = ref(sessionStorage.getItem('otaToken') || '')
+const authToken = ref(sessionStorage.getItem('otaToken') || localStorage.getItem('otaToken') || '')
 const loggedIn = ref(Boolean(authToken.value))
 const loginUser = ref('admin')
 const loginPass = ref('')
-const currentUser = ref(sessionStorage.getItem('otaUsername') || '')
+const currentUser = ref(sessionStorage.getItem('otaUsername') || localStorage.getItem('otaUsername') || '')
+const rememberMe = ref(Boolean(localStorage.getItem('otaToken')))
+const showPassword = ref(false)
+const showForgotPassword = ref(false)
+const darkMode = ref(localStorage.getItem('otaTheme') === 'dark')
 const page = ref('upload')
 const detail = ref(null)
 const firmware = ref([])
@@ -216,12 +322,14 @@ async function login() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: loginUser.value, password: loginPass.value })
     })
+    if (!res.ok) throw new Error(await responseMessage(res, '登录失败'))
     const result = await res.json()
-    if (!res.ok) throw new Error(result.message || '登录失败')
     authToken.value = result.token
     currentUser.value = result.username
-    sessionStorage.setItem('otaToken', result.token)
-    sessionStorage.setItem('otaUsername', result.username)
+    clearStoredCredentials()
+    const storage = rememberMe.value ? localStorage : sessionStorage
+    storage.setItem('otaToken', result.token)
+    storage.setItem('otaUsername', result.username)
     form.uploader = currentUser.value
     loggedIn.value = true
     await loadAll()
@@ -234,11 +342,22 @@ async function login() {
 
 function clearSession() {
   authToken.value = ''
-  sessionStorage.removeItem('otaToken')
-  sessionStorage.removeItem('otaUsername')
+  clearStoredCredentials()
   loggedIn.value = false
   detail.value = null
   loginPass.value = ''
+}
+
+function clearStoredCredentials() {
+  for (const storage of [sessionStorage, localStorage]) {
+    storage.removeItem('otaToken')
+    storage.removeItem('otaUsername')
+  }
+}
+
+function toggleTheme() {
+  darkMode.value = !darkMode.value
+  localStorage.setItem('otaTheme', darkMode.value ? 'dark' : 'light')
 }
 
 async function logout() {
@@ -284,7 +403,7 @@ async function upload() {
   body.append('file', form.file)
   try {
     const res = await apiFetch('/api/admin/firmware/upload', { method: 'POST', body })
-    if (!res.ok) return showToast((await res.json()).message || '上传失败')
+    if (!res.ok) return showToast(await responseMessage(res, '上传失败'))
     Object.assign(form, { product: '', hardware_id: '', partition_id: '', sdk_compat: '', target_build: '', version: '', version_code: null, work_size: null, release_notes: '', description: '', file: null, uploader: currentUser.value })
     await loadAll()
     page.value = 'list'
@@ -329,6 +448,17 @@ function formatTime(value) {
 async function copy(text) {
   await navigator.clipboard.writeText(text)
   showToast('已复制')
+}
+
+async function responseMessage(res, fallback) {
+  const body = await res.text().catch(() => '')
+  if (!body) return fallback
+  try {
+    const payload = JSON.parse(body)
+    return payload.message || payload.error || fallback
+  } catch {
+    return body
+  }
 }
 
 function showToast(text) {
