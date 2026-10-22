@@ -124,53 +124,59 @@
         <span>{{ storageStatus.message }}</span>
       </div>
       <section v-if="page === 'upload'">
-        <h2 class="page-title">上传固件</h2>
-        <form class="upload-card" @submit.prevent="upload">
+        <div class="page-heading-row">
+          <h2 class="page-title">上传固件</h2>
+          <div class="mode-switch" role="group" aria-label="表单说明模式">
+            <button type="button" :class="{ active: formMode === 'concise' }" :aria-pressed="formMode === 'concise'" @click="setFormMode('concise')">简洁</button>
+            <button type="button" :class="{ active: formMode === 'detailed' }" :aria-pressed="formMode === 'detailed'" @click="setFormMode('detailed')">详细</button>
+          </div>
+        </div>
+        <form class="upload-card" :class="{ 'form-concise': formMode === 'concise' }" @submit.prevent="upload">
           <div class="form-grid">
             <label>
               <span class="field-label">产品标识 <code>product</code></span>
               <small class="field-help">OTA 用它区分产品系列，请填写约定的英文标识，例如 df_motion。</small>
-              <input v-model.trim="form.product" required placeholder="例如 df_motion">
+              <input v-model.trim="form.product" required :placeholder="formMode === 'detailed' ? '例如 df_motion' : ''">
             </label>
             <label>
               <span class="field-label">硬件型号 <code>hardware_id</code></span>
               <small class="field-help">填写本固件适用的硬件型号，必须与设备端识别值一致。</small>
-              <input v-model.trim="form.hardware_id" required placeholder="例如 EC200UCN_AA">
+              <input v-model.trim="form.hardware_id" required :placeholder="formMode === 'detailed' ? '例如 EC200UCN_AA' : ''">
             </label>
             <label>
               <span class="field-label">分区方案 <code>partition_id</code></span>
               <small class="field-help">填写打包时使用的分区配置标识，需与固件包匹配。</small>
-              <input v-model.trim="form.partition_id" required placeholder="例如 8910_8m_novolte">
+              <input v-model.trim="form.partition_id" required :placeholder="formMode === 'detailed' ? '例如 8910_8m_novolte' : ''">
             </label>
             <label>
               <span class="field-label">SDK 兼容标识 <code>sdk_compat</code></span>
               <small class="field-help">说明固件适用的模组与 SDK 组合，请按构建信息填写。</small>
-              <input v-model.trim="form.sdk_compat" required placeholder="例如 EC200UCN_AA_8915DM_novolte_8m_v1">
+              <input v-model.trim="form.sdk_compat" required :placeholder="formMode === 'detailed' ? '例如 EC200UCN_AA_8915DM_novolte_8m_v1' : ''">
             </label>
             <label>
               <span class="field-label">构建标识 <code>target_build</code></span>
               <small class="field-help">标记这一次固件构建，建议直接从构建说明中复制。</small>
-              <input v-model.trim="form.target_build" required placeholder="例如 df_motion_20261014_blefull3">
+              <input v-model.trim="form.target_build" required :placeholder="formMode === 'detailed' ? '例如 df_motion_20261014_blefull3' : ''">
             </label>
             <label>
               <span class="field-label">固件版本 <code>version</code></span>
               <small class="field-help">设备当前版本与用户可见的版本号，例如 1.1.2。</small>
-              <input v-model.trim="form.version" required placeholder="例如 1.1.2">
+              <input v-model.trim="form.version" required :placeholder="formMode === 'detailed' ? '例如 1.1.2' : ''">
             </label>
             <label>
               <span class="field-label">版本比较序号 <code>version_code</code></span>
               <small class="field-help">用于设备判断是否升级；必须大于设备当前版本对应的序号。</small>
-              <input v-model.number="form.version_code" required type="number" min="1" max="4294967295" placeholder="例如 10102">
+              <input v-model.number="form.version_code" required type="number" min="1" max="4294967295" :placeholder="formMode === 'detailed' ? '例如 10102' : ''">
             </label>
             <label>
               <span class="field-label">升级工作区大小（字节） <code>work_size</code></span>
               <small class="field-help">从 SDK 打包报告读取；这是设备升级所需空间，不是 .pack 文件大小。</small>
-              <input v-model.number="form.work_size" required type="number" min="0" max="4294967295" placeholder="例如 65536">
+              <input v-model.number="form.work_size" required type="number" min="0" max="4294967295" :placeholder="formMode === 'detailed' ? '例如 65536' : ''">
             </label>
             <label>
               <span class="field-label">发布人</span>
               <small class="field-help">记录本次固件发布的负责人。</small>
-              <input v-model.trim="form.uploader" required placeholder="填写姓名或工号">
+              <input v-model.trim="form.uploader" required :placeholder="formMode === 'detailed' ? '填写姓名或工号' : ''">
             </label>
             <label>
               <span class="field-label">固件包</span>
@@ -180,17 +186,17 @@
             <label class="full">
               <span class="field-label">版本简述</span>
               <small class="field-help">平台中供维护人员查看的简短说明。</small>
-              <textarea v-model.trim="form.description" placeholder="例如：修复定位漂移问题"></textarea>
+              <textarea v-model.trim="form.description" :placeholder="formMode === 'detailed' ? '例如：修复定位漂移问题' : ''"></textarea>
             </label>
             <label class="full">
               <span class="field-label">设备端更新说明 <code>release_notes</code>（可选）</span>
               <small class="field-help">写入版本清单、可供设备端读取，最多 1024 字节。</small>
-              <textarea v-model.trim="form.release_notes" maxlength="1024" placeholder="例如：优化蓝牙连接稳定性"></textarea>
+              <textarea v-model.trim="form.release_notes" maxlength="1024" :placeholder="formMode === 'detailed' ? '例如：优化蓝牙连接稳定性' : ''"></textarea>
             </label>
           </div>
           <div class="form-actions">
             <button class="btn-primary" :disabled="busy">{{ busy ? '上传中...' : '上传' }}</button>
-          <span>仅允许 .pack 文件；固定清单字段由系统填写，文件大小、MD5 和 SHA-256 由服务器计算。</span>
+          <span class="form-note">仅允许 .pack 文件；固定清单字段由系统填写，文件大小、MD5 和 SHA-256 由服务器计算。</span>
           </div>
         </form>
       </section>
@@ -275,6 +281,7 @@ const detail = ref(null)
 const firmware = ref([])
 const logs = ref([])
 const selectedProduct = ref('')
+const formMode = ref(localStorage.getItem('otaFirmwareFormMode') || 'detailed')
 const busy = ref(false)
 const toastText = ref('')
 const storageStatus = ref(null)
@@ -358,6 +365,11 @@ function clearStoredCredentials() {
 function toggleTheme() {
   darkMode.value = !darkMode.value
   localStorage.setItem('otaTheme', darkMode.value ? 'dark' : 'light')
+}
+
+function setFormMode(mode) {
+  formMode.value = mode
+  localStorage.setItem('otaFirmwareFormMode', mode)
 }
 
 async function logout() {
