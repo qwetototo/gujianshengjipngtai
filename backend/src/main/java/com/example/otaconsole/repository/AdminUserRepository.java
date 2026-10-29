@@ -20,6 +20,11 @@ public class AdminUserRepository {
                 """, passwordHash);
     }
 
+    public boolean updatePassword(String oldHash, String newHash) {
+        return jdbc.update("UPDATE admin_user SET password_hash = ?, updated_at = CURRENT_TIMESTAMP(6) WHERE username = 'admin' AND password_hash = ?",
+                newHash, oldHash) == 1;
+    }
+
     public Optional<String> findPasswordHash(String username) {
         return jdbc.query("SELECT password_hash FROM admin_user WHERE username = ?",
                 (result, row) -> result.getString("password_hash"), username).stream().findFirst();

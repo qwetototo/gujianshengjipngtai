@@ -30,6 +30,15 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/password")
+    public ResponseEntity<Void> changePassword(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                              @RequestBody PasswordRequest request) {
+        authService.changePassword(bearerToken(authorization), request.currentPassword(), request.newPassword());
+        return ResponseEntity.noContent().build();
+    }
+
+    public record PasswordRequest(String currentPassword, String newPassword) { }
+
     private String bearerToken(String authorization) {
         if (authorization == null || !authorization.startsWith("Bearer ")) {
             return null;

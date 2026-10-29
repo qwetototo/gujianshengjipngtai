@@ -24,16 +24,13 @@ public class AdminAuthService {
     private static final long SESSION_TTL_MILLIS = 12L * 60L * 60L * 1000L;
 
     private final String initialPassword;
-    private final boolean requireStrongPassword;
     private final AdminUserRepository users;
     private final SecureRandom secureRandom = new SecureRandom();
     private final Map<String, Session> sessions = new ConcurrentHashMap<>();
 
     public AdminAuthService(@Value("${ota.auth.password:}") String initialPassword,
-                            @Value("${ota.auth.require-strong-password:false}") boolean requireStrongPassword,
                             AdminUserRepository users) {
         this.initialPassword = initialPassword;
-        this.requireStrongPassword = requireStrongPassword;
         this.users = users;
     }
 
@@ -42,13 +39,10 @@ public class AdminAuthService {
         if (initialPassword == null || initialPassword.isBlank()) {
             throw new IllegalStateException("管理员初始密码未配置，请设置 OTA_ADMIN_PASSWORD");
         }
-        if (requireStrongPassword && (initialPassword.length() < 16 || initialPassword.equals("123456"))) {
-            throw new IllegalStateException("生产管理员初始密码至少需要 16 个字符，且不得使用测试密码");
-        }
         users.insertAdminIfMissing(hashPassword(initialPassword));
     }
 
-    public Map<String, String> login(String username, String password) {
+    public synchronized Map<String, String> login(String username, String password) {
         String passwordHash = users.findPasswordHash(username == null ? "" : username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "用户名或密码错误"));
         if (password == null || !verifyPassword(password, passwordHash)) {
@@ -71,6 +65,19 @@ public class AdminAuthService {
             return false;
         }
         return true;
+    }
+
+    public synchronized void changePassword(String token, String currentPassword, String newPassword) {
+        if (!isValid(token)) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
+        String oldHash = users.findPasswordHash("admin").orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.UNAUTHORIZED, "管理员账号不存在"));
+        if (currentPassword == null || !verifyPassword(currentPassword, oldHash))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "当前密码错误");
+        if (newPassword == null || newPassword.isEmpty())
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "新密码不能为空");
+        if (!users.updatePassword(oldHash, hashPassword(newPassword)))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "密码已发生变化，请重新登录");
+        sessions.clear();
     }
 
     public void logout(String token) {

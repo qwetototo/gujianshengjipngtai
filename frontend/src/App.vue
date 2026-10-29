@@ -83,7 +83,6 @@
           <dt>target_build</dt><dd class="mono">{{ detail.target_build || '-' }}</dd>
           <dt>version_code</dt><dd class="mono">{{ detail.version_code ?? '-' }}</dd>
           <dt>work_size</dt><dd class="mono">{{ detail.work_size ?? '-' }}</dd>
-          <dt>版本简述</dt><dd>{{ detail.description }}</dd>
           <dt>release_notes</dt><dd>{{ detail.release_notes || '-' }}</dd>
           <dt>文件大小</dt><dd>{{ formatSize(detail.file_size) }}（{{ detail.file_size }} 字节）</dd>
           <dt>MD5</dt><dd class="mono">{{ detail.md5 }}</dd>
@@ -114,11 +113,23 @@
       </nav>
       <div class="sidebar-user">
         <span>{{ currentUser }}</span>
+        <button @click="page = 'password'; passwordError = ''"><KeyRound :size="15" />修改密码</button>
         <button @click="logout"><LogOut :size="15" />退出登录</button>
       </div>
     </aside>
 
     <main class="content">
+      <section v-if="page === 'password'" class="panel">
+        <h2>修改密码</h2>
+        <form @submit.prevent="changePassword" class="form-grid">
+          <label>当前密码<input v-model="passwordForm.current" type="password" autocomplete="current-password" required></label>
+          <label>新密码<input v-model="passwordForm.next" type="password" autocomplete="new-password" required></label>
+          <label>确认新密码<input v-model="passwordForm.confirm" type="password" autocomplete="new-password" required></label>
+          <p v-if="passwordError" role="alert">{{ passwordError }}</p>
+          <button class="btn-primary" :disabled="busy">{{ busy ? '保存中…' : '保存新密码' }}</button>
+          <p>修改成功后，请使用新密码重新登录。</p>
+        </form>
+      </section>
       <div v-if="storageStatus?.warning" class="storage-warning" role="alert">
         <strong>存储空间预警</strong>
         <span>{{ storageStatus.message }}</span>
@@ -178,13 +189,8 @@
               <input required type="file" accept=".pack" @change="form.file = $event.target.files[0]">
             </label>
             <label class="full">
-              <span class="field-label">版本简述</span>
-              <small class="field-help">平台中供维护人员查看的简短说明。</small>
-              <textarea v-model.trim="form.description" placeholder="例如：修复定位漂移问题"></textarea>
-            </label>
-            <label class="full">
-              <span class="field-label">设备端更新说明 <code>release_notes</code>（可选）</span>
-              <small class="field-help">写入版本清单、可供设备端读取，最多 1024 字节。</small>
+              <span class="field-label">更新说明 <code>release_notes</code>（可选）</span>
+              <small class="field-help">用于平台展示和设备端版本清单，最多 1024 个 UTF-8 字节。</small>
               <textarea v-model.trim="form.release_notes" maxlength="1024" placeholder="例如：优化蓝牙连接稳定性"></textarea>
             </label>
           </div>
@@ -209,13 +215,13 @@
             </div>
           </div>
           <table v-if="filteredFirmware.length">
-            <thead><tr><th>版本状态</th><th>产品</th><th>版本</th><th>版本简述</th><th>大小</th><th>上传时间</th><th>上传人</th><th>下载地址</th><th>操作</th></tr></thead>
+            <thead><tr><th>版本状态</th><th>产品</th><th>版本</th><th>更新说明</th><th>大小</th><th>上传时间</th><th>上传人</th><th>下载地址</th><th>操作</th></tr></thead>
             <tbody>
               <tr v-for="item in filteredFirmware" :key="item.id">
                 <td><span class="version-state" :class="item.latest ? 'latest' : 'historical'">{{ item.latest ? '最新版本' : '历史版本' }}</span></td>
                 <td><button class="tag-link" @click="detail = item">{{ item.product }}</button></td>
                 <td><strong>{{ item.version }}</strong></td>
-                <td><button class="desc" :title="item.description" @click="detail = item">{{ item.description }}</button></td>
+                <td><button class="desc" :title="item.release_notes || ''" @click="detail = item">{{ item.release_notes || '-' }}</button></td>
                 <td class="muted">{{ formatSize(item.file_size) }}</td>
                 <td class="muted">{{ formatTime(item.upload_time) }}</td>
                 <td>{{ item.uploader }}</td>
@@ -282,7 +288,7 @@ let storageTimer
 const logAction = ref('')
 const logKeyword = ref('')
 const actionLabel = { upload: '上传', download: '下载', delete: '删除', storage_warning: '磁盘预警', storage_recovered: '空间恢复' }
-const form = reactive({ product: '', hardware_id: '', partition_id: '', sdk_compat: '', target_build: '', version: '', version_code: null, work_size: null, release_notes: '', uploader: '', description: '', file: null })
+const form = reactive({ product: '', hardware_id: '', partition_id: '', sdk_compat: '', target_build: '', version: '', version_code: null, work_size: null, release_notes: '', uploader: '', file: null })
 
 onMounted(() => {
   if (loggedIn.value) loadAll().catch(() => clearSession())
@@ -313,6 +319,24 @@ watch(products, types => {
   }
 })
 
+const passwordForm = reactive({ current: '', next: '', confirm: '' })
+const passwordError = ref('')
+async function changePassword() {
+  passwordError.value = ''
+  if (passwordForm.next !== passwordForm.confirm) { passwordError.value = '两次输入的新密码不一致'; return }
+  busy.value = true
+  try {
+    const res = await apiFetch('/api/auth/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ current_password: passwordForm.current, new_password: passwordForm.next }) })
+    if (!res.ok) throw new Error(await responseMessage(res, '密码修改失败'))
+    clearSession()
+    loginPass.value = ''
+    detail.value = null
+    page.value = 'upload'
+    showToast('密码已修改，请使用新密码登录')
+  } catch (error) { passwordError.value = error.message || '密码修改失败' }
+  finally { busy.value = false }
+}
+
 async function login() {
   if (!loginUser.value || !loginPass.value) return showToast('请输入管理员账号和密码')
   busy.value = true
@@ -341,6 +365,7 @@ async function login() {
 }
 
 function clearSession() {
+  Object.assign(passwordForm, { current: '', next: '', confirm: '' })
   authToken.value = ''
   clearStoredCredentials()
   loggedIn.value = false
@@ -399,12 +424,12 @@ async function upload() {
   if (existing && !confirm(`产品 ${existing.product} 当前最新版本为 ${existing.version}，继续发布会将其保留为历史版本，确定吗？`)) return
   busy.value = true
   const body = new FormData()
-  for (const key of ['product', 'hardware_id', 'partition_id', 'sdk_compat', 'target_build', 'version', 'version_code', 'work_size', 'release_notes', 'description', 'uploader']) body.append(key, form[key] ?? '')
+  for (const key of ['product', 'hardware_id', 'partition_id', 'sdk_compat', 'target_build', 'version', 'version_code', 'work_size', 'release_notes', 'uploader']) body.append(key, form[key] ?? '')
   body.append('file', form.file)
   try {
     const res = await apiFetch('/api/admin/firmware/upload', { method: 'POST', body })
     if (!res.ok) return showToast(await responseMessage(res, '上传失败'))
-    Object.assign(form, { product: '', hardware_id: '', partition_id: '', sdk_compat: '', target_build: '', version: '', version_code: null, work_size: null, release_notes: '', description: '', file: null, uploader: currentUser.value })
+    Object.assign(form, { product: '', hardware_id: '', partition_id: '', sdk_compat: '', target_build: '', version: '', version_code: null, work_size: null, release_notes: '', file: null, uploader: currentUser.value })
     await loadAll()
     page.value = 'list'
     showToast('上传成功')

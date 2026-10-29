@@ -41,7 +41,6 @@ ota:
     upload-reserve-bytes: ${OTA_STORAGE_UPLOAD_RESERVE_BYTES:2147483648}
   auth:
     password: ${OTA_ADMIN_PASSWORD:}
-    require-strong-password: ${OTA_REQUIRE_STRONG_PASSWORD:false}
   cors:
     allowed-origins: ${OTA_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,http://localhost:5175,http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:5175}
 

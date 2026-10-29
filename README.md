@@ -1,5 +1,7 @@
 # Web 固件更新控制台
+远仓：git@github.com:qwetototo/gujianshengjiptai.git
 
+http://1.15.88.116:18082/
 Java 17 + Spring Boot + Vue 3 的 HTTP OTA 固件发布控制台。
 
 ## 数据持久化
@@ -43,7 +45,7 @@ npm run dev
 服务器目标为 Ubuntu/Linux，部署使用 Docker Compose、MySQL 8.4 和 Nginx。生产环境从 `.env` 读取数据库、管理员和存储配置，`.env` 已加入忽略列表，不应提交或公开。
 
 1. 在服务器安装 Docker Engine 与 Compose 插件。镜像内完成 Java 和前端构建，服务器无需安装 Java 或 Node.js。
-2. 复制 `.env.prod.example` 为 `.env`。设置独立的 MySQL root 密码、应用数据库密码和至少 16 位随机管理员密码；`MYSQL_PASSWORD` 与 `OTA_DATABASE_PASSWORD` 必须相同。
+2. 复制 `.env.prod.example` 为 `.env`。设置独立的 MySQL root 密码、应用数据库密码和管理员初始密码；`MYSQL_PASSWORD` 与 `OTA_DATABASE_PASSWORD` 必须相同。
 3. 将 TLS 证书放入 `deploy/certs/fullchain.pem` 和 `deploy/certs/privkey.pem`。证书私钥不要加入版本控制。
 4. 修改 `.env` 中的 `OTA_STORAGE_PATH` 为服务器固件存储目录，例如 `/srv/ota/firmware`，并将目录属主设为容器后端 UID `10001`（例如 `sudo install -d -o 10001 -g 10001 /srv/ota/firmware`）。固件按设备类型分目录保存，MySQL 保存版本信息、文件相对路径和摘要。设置适当的备份和磁盘告警策略。
 5. 将 `ota.example.com` 替换为你的真实域名并配置 DNS，确认 TLS 证书对应此域名。构建并启动：
@@ -58,7 +60,7 @@ docker compose --env-file .env -f docker-compose.prod.yml up -d --build
 docker compose --env-file .env -f docker-compose.prod.yml logs -f backend nginx
 ```
 
-MySQL 只加入 Docker 内部网络，不映射公网端口；公网仅暴露 Nginx 的 80/443。生产管理员密码弱于 16 位会阻止后端启动。OTA 查询与固件下载公开，登录、上传、列表、删除、操作日志和磁盘状态接口要求管理员登录。数据库与固件宿主机目录必须纳入备份；升级前先备份两者。不要通过删除业务表或 `flyway_schema_history` 解决迁移校验问题，应修复迁移脚本或追加新的向前迁移。
+MySQL 只加入 Docker 内部网络，不映射公网端口；公网仅暴露 Nginx 的 80/443。管理员密码不限制长度与复杂度，但不能为空。OTA 查询与固件下载公开，登录、上传、列表、删除、操作日志和磁盘状态接口要求管理员登录。数据库与固件宿主机目录必须纳入备份；升级前先备份两者。不要通过删除业务表或 `flyway_schema_history` 解决迁移校验问题，应修复迁移脚本或追加新的向前迁移。
 
 ### 本地 Docker 测试
 
@@ -89,3 +91,9 @@ DELETE FROM admin_user WHERE username = 'admin';
 - `GET /api/logs`、`GET /api/system/storage`：操作日志与磁盘状态。
 
 接口 JSON 统一使用蛇形命名（如 `product`、`file_size`）。
+
+## 在线修改密码
+
+登录后点击侧栏“修改密码”，填写当前密码和两次新密码。新密码不限制强度，允许 `123456`，但不能为空。密码以 PBKDF2 哈希保存，修改后所有登录会话立即失效，需要重新登录。修改结果持久化在数据库，重启不会被 `OTA_ADMIN_PASSWORD` 覆盖；该环境变量用于首次初始化和忘记密码时重建账号。
+
+接口：`POST /api/auth/password`，要求有效 Bearer 登录令牌，JSON 为 `current_password`、`new_password`，成功返回 204。无需数据库表结构迁移；部署需重建后端镜像并同步前端 dist。
