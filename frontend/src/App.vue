@@ -333,7 +333,7 @@ async function changePassword() {
   if (passwordForm.next !== passwordForm.confirm) { passwordError.value = '两次输入的新密码不一致'; return }
   busy.value = true
   try {
-    const res = await apiFetch('/api/auth/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentPassword: passwordForm.current, newPassword: passwordForm.next }) })
+    const res = await apiFetch('/api/auth/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ current_password: passwordForm.current, new_password: passwordForm.next }) })
     if (!res.ok) throw new Error(await responseMessage(res, '密码修改失败'))
     clearSession()
     loginPass.value = ''
