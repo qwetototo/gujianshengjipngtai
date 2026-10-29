@@ -4,6 +4,7 @@ import com.example.otaconsole.model.FirmwareRecord;
 import com.example.otaconsole.model.OperationLog;
 import com.example.otaconsole.model.VersionResponse;
 import com.example.otaconsole.repository.FirmwareRepository;
+import com.example.otaconsole.support.ApplicationTime;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
@@ -18,7 +19,6 @@ import java.io.InputStream;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -91,13 +91,13 @@ public class FirmwareService {
             record.setFileSize(file.getSize());
             record.setMd5(md5);
             record.setSha256(sha256);
-            record.setUploadTime(LocalDateTime.now());
+            record.setUploadTime(ApplicationTime.now());
             record.setUploader(uploader.trim());
             record.setLatest(true);
 
             List<FirmwareRecord> expired = transactions.execute(status -> {
                 record.setId(repository.insert(record));
-                repository.insertLog(new OperationLog(idForLog(), LocalDateTime.now(), "upload", model, record.getVersion(),
+                repository.insertLog(new OperationLog(idForLog(), ApplicationTime.now(), "upload", model, record.getVersion(),
                         record.getUploader(), "发布 " + safeName));
                 List<FirmwareRecord> stale = repository.findExpiredVersions(model, retainedHistoricalVersions);
                 stale.forEach(item -> repository.delete(item.getId()));
@@ -127,7 +127,7 @@ public class FirmwareService {
         FirmwareRecord record = find(id).orElseThrow(() -> new IllegalArgumentException("固件不存在"));
         transactions.executeWithoutResult(status -> {
             repository.delete(id);
-            repository.insertLog(new OperationLog(idForLog(), LocalDateTime.now(), "delete", record.getProduct(), record.getVersion(),
+            repository.insertLog(new OperationLog(idForLog(), ApplicationTime.now(), "delete", record.getProduct(), record.getVersion(),
                     trimToLength(operator, 120), "删除 " + record.getOriginalFileName()));
         });
         storage.delete(record.getStoredFileName());
@@ -146,7 +146,7 @@ public class FirmwareService {
 
     public void recordDownload(FirmwareRecord r, String operator) {
         String who = operator == null || operator.isBlank() ? "device" : trimToLength(operator.trim(), 120);
-        repository.insertLog(new OperationLog(idForLog(), LocalDateTime.now(), "download", r.getProduct(), r.getVersion(), who,
+        repository.insertLog(new OperationLog(idForLog(), ApplicationTime.now(), "download", r.getProduct(), r.getVersion(), who,
                 "下载 " + r.getFileSize() + " 字节"));
     }
 

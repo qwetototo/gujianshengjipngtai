@@ -10,7 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,7 +37,7 @@ public class FirmwareRepository {
         record.setSha256(result.getString("sha256"));
         record.setOriginalFileName(result.getString("original_file_name"));
         record.setStoredFileName(result.getString("stored_file_name"));
-        record.setUploadTime(result.getTimestamp("upload_time").toLocalDateTime());
+        record.setUploadTime(result.getObject("upload_time", LocalDateTime.class));
         record.setUploader(result.getString("uploader"));
         record.setLatest(result.getInt("version_rank") == 1);
         record.setHardwareId(result.getString("hardware_id"));
@@ -53,7 +53,7 @@ public class FirmwareRepository {
     private static final RowMapper<OperationLog> LOG_ROW = (result, row) -> {
         OperationLog log = new OperationLog();
         log.setId(result.getString("id"));
-        log.setOccurredAt(result.getTimestamp("occurred_at").toLocalDateTime());
+        log.setOccurredAt(result.getObject("occurred_at", LocalDateTime.class));
         log.setAction(result.getString("action"));
         log.setProduct(result.getString("product"));
         log.setVersion(result.getString("version"));
@@ -94,7 +94,7 @@ public class FirmwareRepository {
             statement.setString(13, record.getSha256());
             statement.setString(14, record.getOriginalFileName());
             statement.setString(15, record.getStoredFileName());
-            statement.setTimestamp(16, Timestamp.valueOf(record.getUploadTime()));
+            statement.setObject(16, record.getUploadTime());
             statement.setString(17, record.getUploader());
             return statement;
         }, keys);
@@ -134,7 +134,7 @@ public class FirmwareRepository {
                         INSERT INTO operation_log (id, occurred_at, action, product, version, operator, detail)
                         VALUES (?, ?, ?, ?, ?, ?, ?)
                         """,
-                log.getId(), Timestamp.valueOf(log.getOccurredAt()), log.getAction(), log.getProduct(),
+                log.getId(), log.getOccurredAt(), log.getAction(), log.getProduct(),
                 log.getVersion(), log.getOperator(), log.getDetail());
     }
 

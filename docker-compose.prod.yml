@@ -3,6 +3,7 @@ services:
     image: mysql:8.4
     restart: unless-stopped
     environment:
+      TZ: Asia/Shanghai
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-ota_console}
       MYSQL_USER: ${MYSQL_USER:-ota_app}
@@ -25,6 +26,7 @@ services:
     image: ota-console-backend:1.0.0
     restart: unless-stopped
     environment:
+      TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: prod
       OTA_DATABASE_URL: ${OTA_DATABASE_URL:-jdbc:mysql://mysql:3306/ota_console?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=false&sslMode=REQUIRED}
       OTA_DATABASE_USERNAME: ${OTA_DATABASE_USERNAME:-ota_app}
