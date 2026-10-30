@@ -113,23 +113,13 @@
       </nav>
       <div class="sidebar-user">
         <span>{{ currentUser }}</span>
-        <button @click="page = 'password'; passwordError = ''"><KeyRound :size="15" />修改密码</button>
+        <button @click="openPasswordDialog"><KeyRound :size="15" />修改密码</button>
         <button @click="logout"><LogOut :size="15" />退出登录</button>
       </div>
     </aside>
 
     <main class="content">
-      <section v-if="page === 'password'" class="panel">
-        <h2>修改密码</h2>
-        <form @submit.prevent="changePassword" class="form-grid">
-          <label>当前密码<input v-model="passwordForm.current" type="password" autocomplete="current-password" required></label>
-          <label>新密码<input v-model="passwordForm.next" type="password" autocomplete="new-password" required></label>
-          <label>确认新密码<input v-model="passwordForm.confirm" type="password" autocomplete="new-password" required></label>
-          <p v-if="passwordError" role="alert">{{ passwordError }}</p>
-          <button class="btn-primary" :disabled="busy">{{ busy ? '保存中…' : '保存新密码' }}</button>
-          <p>修改成功后，请使用新密码重新登录。</p>
-        </form>
-      </section>
+
       <div v-if="storageStatus?.warning" class="storage-warning" role="alert">
         <strong>存储空间预警</strong>
         <span>{{ storageStatus.message }}</span>
@@ -266,6 +256,22 @@
   </section>
 
   <div v-show="toastText" class="toast">{{ toastText }}</div>
+  <Teleport to="body">
+    <div v-if="loggedIn && showPasswordDialog" class="modal-backdrop" @click.self="closePasswordDialog">
+      <section class="password-dialog" role="dialog" aria-modal="true" aria-labelledby="change-password-title" tabindex="-1" @keydown.esc="closePasswordDialog" @keydown.tab="trapPasswordFocus">
+        <button class="dialog-close" type="button" aria-label="关闭修改密码" :disabled="busy" @click="closePasswordDialog"><X :size="18" /></button>
+        <div class="password-dialog-heading"><span class="reset-icon"><KeyRound :size="20" /></span><div><h2 id="change-password-title">修改密码</h2><p>更新管理员登录密码</p></div></div>
+        <form @submit.prevent="changePassword">
+          <label>当前密码<input ref="currentPasswordInput" v-model="passwordForm.current" type="password" autocomplete="current-password" placeholder="输入当前密码" required></label>
+          <label>新密码<input v-model="passwordForm.next" type="password" autocomplete="new-password" placeholder="输入新密码" required></label>
+          <label>确认新密码<input v-model="passwordForm.confirm" type="password" autocomplete="new-password" placeholder="再次输入新密码" required></label>
+          <p v-if="passwordError" class="password-dialog-error" role="alert">{{ passwordError }}</p>
+          <p class="password-dialog-hint">修改成功后需要重新登录。</p>
+          <div class="password-dialog-actions"><button class="btn-muted" type="button" :disabled="busy" @click="closePasswordDialog">取消</button><button class="btn-primary" type="submit" :disabled="busy">{{ busy ? '保存中…' : '保存密码' }}</button></div>
+        </form>
+      </section>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
@@ -326,6 +332,28 @@ watch(products, types => {
   }
 })
 
+const showPasswordDialog = ref(false)
+const currentPasswordInput = ref(null)
+let passwordTrigger = null
+function openPasswordDialog(event) {
+  passwordTrigger = event.currentTarget
+  passwordError.value = ''
+  showPasswordDialog.value = true
+  setTimeout(() => currentPasswordInput.value?.focus(), 0)
+}
+function closePasswordDialog() {
+  if (busy.value) return
+  showPasswordDialog.value = false
+  Object.assign(passwordForm, { current: '', next: '', confirm: '' })
+  passwordError.value = ''
+  passwordTrigger?.focus()
+}
+function trapPasswordFocus(event) {
+  const fields = [...event.currentTarget.querySelectorAll('button:not(:disabled), input:not(:disabled)')]
+  const first = fields[0], last = fields[fields.length - 1]
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+}
 const passwordForm = reactive({ current: '', next: '', confirm: '' })
 const passwordError = ref('')
 async function changePassword() {
@@ -372,6 +400,7 @@ async function login() {
 }
 
 function clearSession() {
+  showPasswordDialog.value = false
   Object.assign(passwordForm, { current: '', next: '', confirm: '' })
   authToken.value = ''
   clearStoredCredentials()

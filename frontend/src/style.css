@@ -173,3 +173,15 @@ dd { word-break: break-word; line-height: 1.7; }
   .reset-dialog { padding: 24px 20px; }
   .page-heading-row { flex-wrap: wrap; }
 }
+
+.password-dialog { position:relative; width:min(400px,100%); max-height:calc(100dvh - 40px); overflow:auto; padding:26px; background:#fff; border:1px solid #e0e5ec; border-radius:14px; box-shadow:0 24px 70px #111b4330; }
+.password-dialog-heading { display:flex; align-items:center; gap:12px; margin-bottom:22px; }
+.password-dialog-heading .reset-icon { margin:0; flex-shrink:0; }
+.password-dialog h2 { margin:0 0 4px; font-size:19px; color:#202b3c; }
+.password-dialog-heading p { margin:0; font-size:12px; color:#8190a2; }
+.password-dialog label { display:flex; flex-direction:column; gap:7px; margin-bottom:15px; font-size:13px; color:#465366; }
+.password-dialog input { width:100%; height:42px; padding:0 12px; border:1px solid #dce2ea; border-radius:7px; background:#fff; color:#202b3c; outline:none; }
+.password-dialog input:focus { border-color:#4c83e8; box-shadow:0 0 0 3px #4c83e815; }
+.password-dialog-hint { margin:4px 0 20px; font-size:12px; color:#8190a2; }
+.password-dialog-error { color:#c43c3c; font-size:13px; margin:0 0 12px; }
+.password-dialog-actions { display:flex; justify-content:flex-end; gap:10px; padding-top:16px; border-top:1px solid #edf0f4; }
